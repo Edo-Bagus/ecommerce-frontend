@@ -1,26 +1,35 @@
 "use client";
-import React, { useState } from 'react';
+import React, { useEffect, useState } from "react";
+import axios from "axios"; // Import axios for making API requests
 
 const ProductPage = () => {
-  // Initialize with dummy data
-  const [items, setItems] = useState(
-    Array(15).fill({
-      name: 'Dummy',
-      price: '10000',
-      description: 'DescDumb',
-      category: 'CatDumb',
-      stock: '10',
-    })
-  );
-
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [editingIndex, setEditingIndex] = useState<number | null>(null);
   const [editValues, setEditValues] = useState({
-    name: '',
-    price: '',
-    description: '',
-    category: 0,
-    stock: '',
+    name: "",
+    price: "",
+    description: "",
+    category: "",
+    stock: "",
   });
+
+  // Fetch products from the API
+  const fetchProducts = async () => {
+    try {
+      const response = await axios.get("http://localhost:5000/data/products");
+      setItems(response.data); // Set the response data to the items state
+      setLoading(false);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      setLoading(false);
+    }
+  };
+
+  // Fetch products when the component mounts
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   // Handles clicking the edit button
   const handleEditClick = (index: number) => {
@@ -38,26 +47,61 @@ const ProductPage = () => {
   };
 
   // Handles saving the edited item
-  const handleSaveClick = () => {
+  const handleSaveClick = async () => {
     if (editingIndex === null) return;
 
-    const updatedItems = [...items];
-    updatedItems[editingIndex] = editValues; // Update the edited item
-    setItems(updatedItems);
-    setEditingIndex(null); // Reset editing index after saving
+    try {
+      const updatedItem = editValues;
+      const response = await axios.put(
+        `http://localhost:5000/data/products/${items[editingIndex]._id}`,
+        updatedItem
+      );
+      const updatedItems = [...items];
+      updatedItems[editingIndex] = response.data; // Update the item with response data
+      setItems(updatedItems);
+      setEditingIndex(null); // Reset editing index after saving
+    } catch (error) {
+      console.error("Error updating product:", error);
+    }
   };
 
-  // Function to add a new dummy item
-  const handleCreateNewItem = () => {
-    const newItem = {
-      name: 'New Dummy',
-      price: '20000',
-      description: 'New Description',
-      category: 'New Category',
-      stock: '20',
-    };
-    setItems((prevItems) => [...prevItems, newItem]); // Add new item to the array
+  // Handles deleting an item
+  const handleDeleteClick = async (id: string, index: number) => {
+    try {
+      // Send DELETE request to the API
+      await axios.delete(`http://localhost:5000/data/products/${id}`);
+
+      // Remove the item from the UI state
+      const updatedItems = items.filter((_, i) => i !== index);
+      setItems(updatedItems);
+    } catch (error) {
+      console.error("Error deleting product:", error);
+    }
   };
+
+  // Add new dummy product
+  const handleCreateNewItem = async () => {
+    try {
+      const newItem = {
+        name: "New Dummy",
+        price: 20000,
+        description: "New Description",
+        category: "New Category",
+        stock: 20,
+      };
+      const response = await axios.post(
+        "http://localhost:5000/data/products",
+        newItem
+      );
+      setItems((prevItems) => [...prevItems, response.data]);
+    } catch (error) {
+      console.error("Error creating product:", error);
+    }
+  };
+
+  if (loading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <section className="w-screen h-screen bg-[#F4F4F9] relative flex flex-row">
@@ -78,16 +122,15 @@ const ProductPage = () => {
             <table className="min-w-full table-auto border-collapse text-left">
               <thead className="bg-[#E9ECEF] sticky top-0 z-10 border-b border-t">
                 <tr>
-                  <th style={{ width: '5%' }} className="border px-4 py-2 text-[#343A40]">No</th>
-                  <th style={{ width: '20%' }} className="border px-4 py-2 text-[#343A40]">Name</th>
-                  <th style={{ width: '15%' }} className="border px-4 py-2 text-[#343A40]">Price</th>
-                  <th style={{ width: '25%' }} className="border px-4 py-2 text-[#343A40]">Description</th>
-                  <th style={{ width: '15%' }} className="border px-4 py-2 text-[#343A40]">Category</th>
-                  <th style={{ width: '10%' }} className="border px-4 py-2 text-[#343A40]">Stock</th>
-                  <th style={{ width: '10%' }} className="border px-4 py-2 text-[#343A40]">Option</th>
+                  <th style={{ width: "5%" }} className="border px-4 py-2 text-[#343A40]">No</th>
+                  <th style={{ width: "20%" }} className="border px-4 py-2 text-[#343A40]">Name</th>
+                  <th style={{ width: "15%" }} className="border px-4 py-2 text-[#343A40]">Price</th>
+                  <th style={{ width: "25%" }} className="border px-4 py-2 text-[#343A40]">Description</th>
+                  <th style={{ width: "15%" }} className="border px-4 py-2 text-[#343A40]">Category</th>
+                  <th style={{ width: "10%" }} className="border px-4 py-2 text-[#343A40]">Stock</th>
+                  <th style={{ width: "10%" }} className="border px-4 py-2 text-[#343A40]">Option</th>
                 </tr>
               </thead>
-
               <tbody className="bg-white">
                 {items.map((item, i) => (
                   <tr key={i} className="hover:bg-[#F8F9FA]">
@@ -152,14 +195,17 @@ const ProductPage = () => {
                         <td className="border px-4 py-2 text-[#343A40]">{item.description}</td>
                         <td className="border px-4 py-2 text-[#343A40]">{item.category}</td>
                         <td className="border px-4 py-2 text-[#343A40]">{item.stock}</td>
-                        <td className="border px-4 py-2 text-[#343A40]">
+                        <td className="border px-4 py-2">
                           <button
                             onClick={() => handleEditClick(i)}
-                            className="bg-yellow-500 text-white px-3 py-1 rounded mr-2"
+                            className="bg-blue-500 text-white px-3 py-1 rounded mr-2"
                           >
                             Edit
                           </button>
-                          <button className="bg-red-500 text-white px-3 py-1 rounded">
+                          <button
+                            onClick={() => handleDeleteClick(item._id, i)}
+                            className="bg-red-500 text-white px-3 py-1 rounded"
+                          >
                             Delete
                           </button>
                         </td>
@@ -170,13 +216,12 @@ const ProductPage = () => {
               </tbody>
             </table>
           </div>
-          
-          {/* New "Create New" button */}
+
           <button
             onClick={handleCreateNewItem}
-            className="bg-blue-500 text-white px-3 py-1 mt-[1vw] rounded"
+            className="mt-4 bg-blue-500 text-white px-4 py-2 rounded"
           >
-            Create New
+            Add New Product
           </button>
         </div>
       </div>
